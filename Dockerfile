@@ -43,3 +43,4 @@ ENV DATABASE_DSN=Host=postgres.app.svc.cluster.local;Database=shop;Username=post
 EXPOSE 8080
 
 ENTRYPOINT ["dotnet", "DotnetEcommerce.dll"]
+
