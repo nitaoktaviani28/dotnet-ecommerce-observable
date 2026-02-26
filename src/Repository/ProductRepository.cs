@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using DotnetEcommerce.Models;
 using Npgsql;
 
@@ -24,7 +26,9 @@ public class ProductRepository
         await conn.OpenAsync();
 
         await using var cmd = new NpgsqlCommand(
-            "SELECT id, name, price FROM products ORDER BY id", conn);
+            "SELECT id, name, price FROM products ORDER BY id",
+            conn);
+
         await using var reader = await cmd.ExecuteReaderAsync();
 
         while (await reader.ReadAsync())
@@ -46,8 +50,11 @@ public class ProductRepository
         await conn.OpenAsync();
 
         await using var cmd = new NpgsqlCommand(
-            "SELECT id, name, price FROM products WHERE id = $1", conn);
+            "SELECT id, name, price FROM products WHERE id = $1",
+            conn);
+
         cmd.Parameters.AddWithValue(id);
+
         await using var reader = await cmd.ExecuteReaderAsync();
 
         if (await reader.ReadAsync())
