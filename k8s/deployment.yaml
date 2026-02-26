@@ -1,0 +1,119 @@
+# ======================================================
+# DEPLOYMENT
+# ======================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dotnet-ecommerce
+  namespace: app
+  labels:
+    app: dotnet-ecommerce
+    lang: dotnet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dotnet-ecommerce
+  template:
+    metadata:
+      labels:
+        app: dotnet-ecommerce
+        lang: dotnet
+    spec:
+      nodeSelector:
+        kubernetes.azure.com/agentpool: apppool
+
+      containers:
+        - name: dotnet-ecommerce
+          image: your-registry/dotnet-ecommerce:latest
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 8080
+
+          env:
+            # =========================
+            # DATABASE
+            # =========================
+            - name: DATABASE_DSN
+              value: "Host=postgres.app.svc.cluster.local;Database=shop;Username=postgres;Password=postgres"
+
+            # =========================
+            # OPENTELEMETRY
+            # =========================
+            - name: OTEL_SERVICE_NAME
+              value: "dotnet-ecommerce"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://alloy.monitoring.svc.cluster.local:4318"
+
+            # =========================
+            # PYROSCOPE NATIVE PROFILER
+            # =========================
+            - name: CORECLR_ENABLE_PROFILING
+              value: "1"
+            - name: CORECLR_PROFILER
+              value: "{BD1A650D-AC5D-4896-B64F-D6FA25D6B26A}"
+            - name: CORECLR_PROFILER_PATH
+              value: "/app/Pyroscope.Profiler.Native.so"
+            - name: LD_PRELOAD
+              value: "/app/Pyroscope.Linux.ApiWrapper.x64.so"
+            - name: PYROSCOPE_APPLICATION_NAME
+              value: "dotnet-ecommerce"
+            - name: PYROSCOPE_SERVER_ADDRESS
+              value: "http://pyroscope-distributor.monitoring.svc.cluster.local:4040"
+            - name: PYROSCOPE_PROFILING_ENABLED
+              value: "1"
+            - name: PYROSCOPE_PROFILING_ALLOCATION_ENABLED
+              value: "true"
+            - name: PYROSCOPE_PROFILING_CPU_ENABLED
+              value: "true"
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+---
+# ======================================================
+# SERVICE (LOAD BALANCER)
+# ======================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: dotnet-ecommerce
+  namespace: app
+spec:
+  type: LoadBalancer
+  selector:
+    app: dotnet-ecommerce
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+
+---
+# ======================================================
+# HPA
+# ======================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: dotnet-ecommerce
+  namespace: app
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: dotnet-ecommerce
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
