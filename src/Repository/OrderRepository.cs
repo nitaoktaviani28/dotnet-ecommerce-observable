@@ -1,3 +1,5 @@
+using System;
+using System.Threading.Tasks;
 using DotnetEcommerce.Models;
 using DotnetEcommerce.Observability;
 using Npgsql;
@@ -24,7 +26,9 @@ public class OrderRepository
         await conn.OpenAsync();
 
         await using var cmd = new NpgsqlCommand(
-            "INSERT INTO orders (product_id, quantity, total) VALUES ($1, $2, $3) RETURNING id", conn);
+            "INSERT INTO orders (product_id, quantity, total) VALUES ($1, $2, $3) RETURNING id",
+            conn);
+
         cmd.Parameters.AddWithValue(productId);
         cmd.Parameters.AddWithValue(quantity);
         cmd.Parameters.AddWithValue(total);
@@ -43,8 +47,11 @@ public class OrderRepository
         await conn.OpenAsync();
 
         await using var cmd = new NpgsqlCommand(
-            "SELECT id, product_id, quantity, total, created_at FROM orders WHERE id = $1", conn);
+            "SELECT id, product_id, quantity, total, created_at FROM orders WHERE id = $1",
+            conn);
+
         cmd.Parameters.AddWithValue(id);
+
         await using var reader = await cmd.ExecuteReaderAsync();
 
         if (await reader.ReadAsync())
